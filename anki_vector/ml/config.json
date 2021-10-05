@@ -1,0 +1,5 @@
+{
+    "dataset": "<dataset name>",
+    "modelUuid": "<version number>",
+    "roboflowKey": "<key from roboflow>"
+}

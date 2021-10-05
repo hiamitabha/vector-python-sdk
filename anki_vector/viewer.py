@@ -21,6 +21,10 @@ __all__ = ['ViewerComponent', 'Viewer3DComponent']
 import multiprocessing as mp
 import sys
 import threading
+import time
+import random
+import uuid
+from datetime import datetime, timedelta
 
 try:
     from PIL import Image
@@ -29,6 +33,7 @@ except ImportError:
 
 from . import util
 from .events import Events
+from .ml.util import MLAgent
 
 
 class ViewerComponent(util.Component):
@@ -56,6 +61,9 @@ class ViewerComponent(util.Component):
         self._close_event: mp.Event = None
         self._frame_queue: mp.Queue = None
         self._process = None
+        self._mlAgent = MLAgent()
+        self._last_upload_timestamp = 0
+        self._next_upload_timestamp = 0
 
     def show(self, timeout: float = 10.0, force_on_top: bool = True) -> None:
         """Render a video stream using the images obtained from
@@ -117,6 +125,15 @@ class ViewerComponent(util.Component):
                 self._process.terminate()
             self._process = None
 
+    def _get_next_upload_time_delta(self):
+       """
+          Generate the timedelta after which the next image should be uploaded.
+          Currently the timedelta is configured to be between 20 sec and 1 minute
+       """
+       rand = random.randint(20, 60)
+       delta = timedelta(seconds=rand)
+       return delta
+
     def enqueue_frame(self, image: Image.Image):
         """Sends a frame to the viewer's rendering process. Sending `None` to the viewer
         will cause it to gracefully shutdown.
@@ -139,9 +156,19 @@ class ViewerComponent(util.Component):
         :param image: A frame from Vector's camera.
         """
         close_event = self._close_event
+        current_time = datetime.now()
+        if not self._last_upload_timestamp or current_time >= self._next_upload_timestamp:
+            if self._last_upload_timestamp:
+               imageName = uuid.uuid4()
+               self._mlAgent.upload_image(image, 'robot' + str(imageName))
+            self._last_upload_timestamp = current_time
+            self._next_upload_timestamp = \
+            current_time + self._get_next_upload_time_delta()
+
+        processed_image = self._mlAgent.run_inference(image)
         if self._frame_queue is not None and close_event is not None and not close_event.is_set():
             try:
-                self._frame_queue.put(image, False)
+                self._frame_queue.put(processed_image, False)
             except mp.queues.Full:
                 pass
 
