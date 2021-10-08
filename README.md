@@ -2,7 +2,7 @@
 
 ## Amitabha's modifications to Official Anki Vector SDK
 
-Current:
+Current (v 0.7.0.hiamitabha):
 - Ability to detect and view another Vector robot with the help of the viewer
 
 Future/Planned:
