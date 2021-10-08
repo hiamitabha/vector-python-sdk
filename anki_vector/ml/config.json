@@ -1,5 +1,6 @@
 {
     "dataset": "<dataset name>",
     "modelUuid": "<version number>",
-    "roboflowKey": "<key from roboflow>"
+    "roboflowKey": "<key from roboflow>",
+    "uploadNewImages": False
 }

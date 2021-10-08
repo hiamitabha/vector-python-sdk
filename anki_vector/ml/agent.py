@@ -24,6 +24,7 @@ class MLAgent:
             self.dataset = config['dataset']
             self.modelUuid = config['modelUuid']
             self.roboflowKey = config['roboflowKey']
+            self.uploadNewImages = config['uploadNewImages']
        
     def upload_image(self, image: Image.Image,
                      imageName: str):
@@ -31,7 +32,10 @@ class MLAgent:
            Code is borrowed from the example at:
            https://docs.roboflow.com/adding-data/upload-api
            :param image: Input image that needs to be uploaded
-        """ 
+        """
+        #First check if permissions are available to upload new images.
+        if not self.uploadNewImages:
+            return
         # Convert to JPEG Buffer
         buffered = io.BytesIO()
         image.save(buffered, quality=90, format="JPEG")
@@ -69,6 +73,8 @@ class MLAgent:
         inference API. Returns an annotated Image in case inference detects
         an object
         :param image: The image to run inference on
+        :return Returns a tuple of an image with bounding boxes around the
+        objects detected and a set of tags of all the objects detected
         """
         # Convert to JPEG Buffer
         buffered = io.BytesIO()
