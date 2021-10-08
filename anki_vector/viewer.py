@@ -33,7 +33,7 @@ except ImportError:
 
 from . import util
 from .events import Events
-from .ml.util import MLAgent
+from .ml.agent import MLAgent
 
 
 class ViewerComponent(util.Component):
