@@ -32,7 +32,7 @@ To get a feeling of the power of this SDK, please try the following program:
 python3 examples/tutorials/19_show_video_feed.py
 
 Here is an example output 
-![Video](https://youtu.be/Nw9a50zGnvs)
+[video](https://youtu.be/Nw9a50zGnvs)
 from this program.
 
 ## Feedback
