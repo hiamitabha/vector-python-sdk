@@ -1,12 +1,13 @@
 """A machine learning to support operations via roboflow.ai
 """
 import requests
-import base64
 import io
 import os
 import json
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 _CONFIG_FILE = "config.json"
+_MODEL_SWAP_ITERATIONS = 20
 
 try:
     from PIL import Image, ImageDraw, ImageFont
@@ -22,9 +23,12 @@ class MLAgent:
         with open(config_file) as json_file:
             config = json.load(json_file)
             self.dataset = config['dataset']
-            self.modelUuid = config['modelUuid']
+            self.modelUuid = config['modelUuid'].split(",")
             self.roboflowKey = config['roboflowKey']
             self.uploadNewImages = config['uploadNewImages']
+            self.numModels = len(self.modelUuid)
+            self.currentModelId = 0
+            self.modelUseCounter = 0
        
     def upload_image(self, image: Image.Image,
                      imageName: str):
@@ -32,6 +36,7 @@ class MLAgent:
            Code is borrowed from the example at:
            https://docs.roboflow.com/adding-data/upload-api
            :param image: Input image that needs to be uploaded
+           :param imageName: The name with which the image needs to be uploaded
         """
         #First check if permissions are available to upload new images.
         if not self.uploadNewImages:
@@ -40,9 +45,8 @@ class MLAgent:
         buffered = io.BytesIO()
         image.save(buffered, quality=90, format="JPEG")
 
-        # Base 64 Encode
-        img_str = base64.b64encode(buffered.getvalue())
-        img_str = img_str.decode("ascii")
+        # Build multipart form and post request
+        m = MultipartEncoder(fields={'file': ("imageToUpload", buffered.getvalue(), "image/jpeg")})
 
         # Construct the URL
         upload_url = "".join([
@@ -57,8 +61,8 @@ class MLAgent:
             ])
 
         # POST to the API
-        result = requests.post(upload_url, data=img_str, headers={
-            "Content-Type": "application/x-www-form-urlencoded"
+        result = requests.post(upload_url, data=m, headers={
+            "Content-Type": m.content_type 
             })
 
         res = result.json()
@@ -67,11 +71,17 @@ class MLAgent:
             print(res)
         else:
             print("Image %s uploaded successfully!" % imageName)
+    def updateCurrentModelId():
+        """Updates the model Id depending on the usage to facilitate A/B testing
+        """
+        self.modelUseCounter += 1
+        if (self.modelUseCounter % _MODEL_SWAP_ITERATIONS == 0):
+            self.currentModelId +=1
+            if (self.currentModelId == self.numModels):
+                self.currentModelId = 0
 
-    def run_inference(self, image: Image.Image): 
-        """Run inference on the provided image with the help of Roboflow
-        inference API. Returns an annotated Image in case inference detects
-        an object
+    def run_inference_via_roboflow(self, image: Image.Image):
+        """Run inference via roboflow APIs. Returns image with bounded boxes
         :param image: The image to run inference on
         :return Returns a tuple of an image with bounding boxes around the
         objects detected and a set of tags of all the objects detected
@@ -80,24 +90,25 @@ class MLAgent:
         buffered = io.BytesIO()
         image.save(buffered, quality=90, format="JPEG")
 
-        # Base 64 Encode
-        img_str = base64.b64encode(buffered.getvalue())
-        img_str = img_str.decode("ascii")
-
+        # Build multipart form and post request
+        m = MultipartEncoder(fields={'file': ("imageToUpload", buffered.getvalue(), "image/jpeg")})
+        self.updateCurrentModelId()
+        model = self.modelUuid[self.currentModelId] 
         # Construct the Roboflow URL to do Inference
         upload_url = "".join([
             "https://detect.roboflow.com/",
             self.dataset,
             "/",
-            self.modelUuid,
+            model,
             "?api_key=",
             self.roboflowKey, 
             "&format=json" 
         ])
 
         # POST request to the API
-        headers = {'accept': 'application/json'}
-        r = requests.post(upload_url, data=img_str, headers=headers)
+        r = requests.post(upload_url, data=m, headers={
+            "Content-Type": m.content_type
+            })
         preds = r.json()
         detections = preds['predictions']
 
@@ -113,8 +124,7 @@ class MLAgent:
             draw.rectangle([
                 x1, y1, x2, y2
             ], outline=color, width=5)
-
-            text = box['class']
+            text = box['class'] + '_' + model
             text_size = font.getsize(text)
 
             #set button size + 10px margins
@@ -126,4 +136,27 @@ class MLAgent:
 
             # put button on source image in position (0, 0)
             image.paste(button_img, (int(x1), int(y1)))
+        return image
+
+    def run_inference_via_custom_url(self, image: Image.Image):
+        """Run inference via a custom URL.
+        Future: Read the custom URL from a config file.
+        """
+        buffered = io.BytesIO()
+        image.save(buffered, quality=90, format="JPEG")
+        url = 'http://localhost:5000/'
+        files = {'file': buffered.getvalue(), 'model_choice':'best_s'}
+        response = requests.post(url, files=files)
+        image = Image.open(io.BytesIO(response.content))
+        return image
+
+    def run_inference(self, image: Image.Image): 
+        """Run inference on the provided image with the help of Roboflow
+        inference API. Returns an annotated Image in case inference detects
+        an object
+        :param image: The image to run inference on
+        :return Returns a tuple of an image with bounding boxes around the
+        objects detected and a set of tags of all the objects detected
+        """
+        image = self.run_inference_via_roboflow(image)
         return image
