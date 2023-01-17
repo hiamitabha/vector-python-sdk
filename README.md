@@ -2,7 +2,7 @@
 
 ## Amitabha's modifications to Official Anki Vector SDK
 
-Current:
+Current (v 0.7.0.hiamitabha):
 - Ability to detect and view another Vector robot with the help of the viewer
 
 Future/Planned:
@@ -28,10 +28,12 @@ train a model at Roboflow is available at https://docs.roboflow.com/train
 
 ## Execution
 To get a feeling of the power of this SDK, please try the following program:
+
 python3 examples/tutorials/19_show_video_feed.py
 
-Here is an example output video from this program.
-![Video](https://youtu.be/Nw9a50zGnvs)
+Here is an example output 
+[video](https://youtu.be/Nw9a50zGnvs)
+from this program.
 
 ## Feedback
 I have invested considerable time and effort building this SDK, and any feedback that you can provide
@@ -39,7 +41,7 @@ would be very helpful. Please reach me via my contacts at my github profile: htt
 for any feedback
 
 
-# Generic Notes from standard version of Vector SDK
+# Generic Notes from standard version of Vector SDK (v0.6)
 
 ![Vector](docs/source/images/vector-sdk-alpha.jpg)
 
