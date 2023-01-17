@@ -8,6 +8,7 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 _CONFIG_FILE = "config.json"
 _MODEL_SWAP_ITERATIONS = 20
+_VERSION_COLOR_CODE = '#8e3c44'
 
 try:
     from PIL import Image, ImageDraw, ImageFont
@@ -71,7 +72,8 @@ class MLAgent:
             print(res)
         else:
             print("Image %s uploaded successfully!" % imageName)
-    def updateCurrentModelId():
+
+    def updateCurrentModelId(self):
         """Updates the model Id depending on the usage to facilitate A/B testing
         """
         self.modelUseCounter += 1
@@ -114,7 +116,9 @@ class MLAgent:
 
         draw = ImageDraw.Draw(image)
         font = ImageFont.load_default()
-
+        draw.text((10,10), "Running model version " + model,
+                  fill=_VERSION_COLOR_CODE)
+       
         for box in detections:
             color = "#4892EA"
             x1 = box['x'] - box['width'] / 2
@@ -124,7 +128,7 @@ class MLAgent:
             draw.rectangle([
                 x1, y1, x2, y2
             ], outline=color, width=5)
-            text = box['class'] + '_' + model
+            text = box['class'] + '_modelv_' + model
             text_size = font.getsize(text)
 
             #set button size + 10px margins
