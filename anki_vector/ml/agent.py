@@ -27,6 +27,7 @@ class MLAgent:
             self.modelUuid = config['modelUuid'].split(",")
             self.roboflowKey = config['roboflowKey']
             self.uploadNewImages = config['uploadNewImages']
+            self.type = config.get('type')
             self.numModels = len(self.modelUuid)
             self.currentModelId = 0
             self.modelUseCounter = 0
@@ -97,15 +98,26 @@ class MLAgent:
         self.updateCurrentModelId()
         model = self.modelUuid[self.currentModelId] 
         # Construct the Roboflow URL to do Inference
-        upload_url = "".join([
-            "https://detect.roboflow.com/",
-            self.dataset,
-            "/",
-            model,
-            "?api_key=",
-            self.roboflowKey, 
-            "&format=json" 
-        ])
+        if self.type == 'object-detection':
+            upload_url = "".join([
+                "https://detect.roboflow.com/",
+                self.dataset,
+                "/",
+                model,
+                "?api_key=",
+                self.roboflowKey,
+                "&format=json"
+            ])
+        elif self.type == 'instance-segmentation'
+            upload_url = "".join([
+                "https://outline.roboflow.com/",
+                self.dataset,
+                "/",
+                model,
+                "?api_key=",
+                self.roboflowKey,
+                "&format=json"
+            ])
 
         # POST request to the API
         r = requests.post(upload_url, data=m, headers={
@@ -116,19 +128,32 @@ class MLAgent:
 
         draw = ImageDraw.Draw(image)
         font = ImageFont.load_default()
-        draw.text((10,10), "Running model version " + model,
+        draw.text((10,10), "Running model %s version %s " % (self.dataset, model),
                   fill=_VERSION_COLOR_CODE)
        
         for box in detections:
             color = "#4892EA"
             x1 = box['x'] - box['width'] / 2
-            x2 = box['x'] + box['width'] / 2
             y1 = box['y'] - box['height'] / 2
-            y2 = box['y'] + box['height'] / 2
-            draw.rectangle([
-                x1, y1, x2, y2
-            ], outline=color, width=5)
-            text = box['class'] + '_modelv_' + model
+            if self.type == 'object-detection':
+                x2 = box['x'] + box['width'] / 2
+                y2 = box['y'] + box['height'] / 2
+                draw.rectangle([
+                    x1, y1, x2, y2
+                ], outline=color, width=5)
+            elif self.type == 'instance-segmentation':
+                points = box.get('points')
+                start_x = points[0]['x']
+                start_y = points[0]['y']
+                for point in points[1:]:
+                    next_x = point['x']
+                    next_y = point['y']
+                    draw.line([start_x, start_y, next_x, next_y], fill=color, width=5)
+                    start_x = next_x
+                    start_y = next_y
+
+            #text = box['class'] + '_modelv_' + model
+            text = box['class']
             text_size = font.getsize(text)
 
             #set button size + 10px margins
